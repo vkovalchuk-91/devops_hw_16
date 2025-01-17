@@ -33,6 +33,25 @@ resource "aws_internet_gateway" "main" {
   }
 }
 
+# Elastic IP for NAT Gateway
+resource "aws_eip" "nat" {
+  count = 3
+
+  tags = {
+    Name = "HW_16-NAT-EIP-${count.index + 1}"
+  }
+}
+
+# NAT Gateway
+resource "aws_nat_gateway" "nat" {
+  count         = 3
+  allocation_id = aws_eip.nat[count.index].id
+  subnet_id     = aws_subnet.public[count.index].id
+
+  tags = {
+    Name = "HW_16-NAT-Gateway-${count.index + 1}"
+  }
+}
 
 resource "aws_subnet" "public" {
   count             = 3
@@ -102,6 +121,13 @@ resource "aws_route_table" "private" {
   }
 }
 
+resource "aws_route" "private" {
+  count                  = 3
+  route_table_id         = aws_route_table.private[count.index].id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.nat[count.index].id
+}
+
 resource "aws_route_table_association" "private" {
   count          = 3
   subnet_id      = aws_subnet.private[count.index].id
@@ -122,46 +148,6 @@ resource "aws_route_table_association" "database" {
   count          = 3
   subnet_id      = aws_subnet.database[count.index].id
   route_table_id = aws_route_table.database[count.index].id
-}
-
-
-resource "aws_security_group" "ssh_access" {
-  name        = "ssh-access-sg"
-  description = "Allow SSH access to EC2 instances"
-  vpc_id      = aws_vpc.main.id
-
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "SSH Access Security Group"
-  }
-}
-
-
-resource "aws_instance" "bastion" {
-  ami                         = "ami-0745b7d4092315796"
-  instance_type               = "t2.micro"
-  key_name                    = "slengpack"
-  subnet_id                   = aws_subnet.public[0].id
-  vpc_security_group_ids      = [aws_security_group.ssh_access.id]
-  associate_public_ip_address = true
-
-  tags = {
-    Name = "Instance-Public(Bastion)"
-    VPC  = aws_vpc.main.id
-  }
 }
 
 
@@ -251,16 +237,20 @@ output "created_vpc_id" {
     value = aws_vpc.main.id
 }
 
-output "created_bastion_sg_id" {
-    value = aws_security_group.ssh_access.id
+output "public_subnet_id_1" {
+    value = aws_subnet.public[0].id
 }
 
-output "bastion_instance_ip" {
-    value = aws_instance.bastion.public_ip
+output "public_subnet_id_2" {
+    value = aws_subnet.public[1].id
 }
 
-output "created_rds_sg_id" {
-    value = aws_security_group.rds_sg.id
+output "private_subnet_id_1" {
+    value = aws_subnet.private[0].id
+}
+
+output "private_subnet_id_2" {
+    value = aws_subnet.private[1].id
 }
 
 output "rds_endpoint" {
