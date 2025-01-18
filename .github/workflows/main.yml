@@ -120,6 +120,7 @@ jobs:
         if: contains(github.event.inputs.action, 'destroy')
         id: destroy
         run: terraform destroy -auto-approve
+        working-directory: step3
 
       - name: Collect status (destroy)
         if: contains(github.event.inputs.action, 'destroy')
