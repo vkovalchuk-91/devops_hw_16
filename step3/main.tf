@@ -1,7 +1,7 @@
 terraform {
   backend "s3"{
   bucket = "github-actions-slengpack"
-  key = "terrraform.tfstate"
+  key = "terrraformECR.tfstate"
   region = "eu-central-1"
   }
   
@@ -65,7 +65,7 @@ resource "aws_iam_role_policy_attachment" "ecs_cloudwatch_full_access" {
 # --- Security Group ---
 resource "aws_security_group" "ecs_sg" {
   name_prefix = "ecs-wordpress-"
-  vpc_id      = "vpc-065d978e7afd01ff4" # use your VPC
+  vpc_id      = "vpc-0fffceeee860b6127" # use your VPC
 
   ingress {
     from_port   = 80
@@ -88,7 +88,7 @@ resource "aws_lb" "wordpress_alb" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.ecs_sg.id]
-  subnets            = ["subnet-0094cfbc1db6f9890", "subnet-0aaed2193f0b00b29"] #use public subnet
+  subnets            = ["subnet-0a3f921cb7f2b2727", "subnet-0a03c35dcc9db51cc"] #use public subnet
 }
 
 # --- Target Group ---
@@ -96,7 +96,7 @@ resource "aws_lb_target_group" "wordpress_tg" {
   name        = "wordpress-tg"
   port        = 80
   protocol    = "HTTP"
-  vpc_id      = "vpc-065d978e7afd01ff4" # use your VPC
+  vpc_id      = "vpc-0fffceeee860b6127" # use your VPC
   target_type = "ip"
 }
 
@@ -125,7 +125,7 @@ resource "aws_ecs_task_definition" "wordpress" {
   container_definitions = jsonencode([
     {
       name      = "wordpress"
-      image     = "974101771016.dkr.ecr.eu-central-1.amazonaws.com/wordpress-repo:custom" # use your docker image form ECR
+      image     = "571600859313.dkr.ecr.eu-central-1.amazonaws.com/wordpress-repo:custom" # use your docker image form ECR
       essential = true
       portMappings = [
         {
@@ -137,7 +137,7 @@ resource "aws_ecs_task_definition" "wordpress" {
       environment = [
         {
           name  = "WORDPRESS_DB_HOST"
-          value = "kowo-db-instance.cf2ociwtdw3j.eu-central-1.rds.amazonaws.com" # use your endpoint
+          value = "slengpack-db-instance.cf4amqa86ky4.eu-central-1.rds.amazonaws.com" # use your endpoint
         }
       ]
     }
@@ -156,7 +156,7 @@ resource "aws_ecs_service" "wordpress" {
   enable_execute_command = true
 
   network_configuration {
-    subnets         = ["subnet-008e9be294a87fbaa", "subnet-0dff3902ba44b56a5"] #use private subnet
+    subnets         = ["subnet-0b8870f65ff334f31", "subnet-0df8f70cc8cc79f7c"] #use private subnet
     security_groups = [aws_security_group.ecs_sg.id]
   }
 
