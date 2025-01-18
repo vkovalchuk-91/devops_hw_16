@@ -94,7 +94,7 @@ jobs:
       - name: Apply Terraform (step3)
         if: contains(github.event.inputs.action, 'step3')
         id: apply_step3
-        run: terraform apply -chdir=step3 -auto-approve
+        run: terraform apply -auto-approve
         working-directory: step3
 
       - name: Collect status (step3)
