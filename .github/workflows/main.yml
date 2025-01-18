@@ -63,6 +63,7 @@ jobs:
           echo "PRIVATE_SUBNET_ID_2=$(terraform output private_subnet_id_2)" >> $GITHUB_ENV
           echo "RDS_DB_ENDPOINT=$(terraform output rds_endpoint)" >> $GITHUB_ENV
           echo "TERRAFORM_STATUS=$([[ '${{ steps.apply_step1.outcome }}' == 'success' ]] && echo '✅ Success')" >> $GITHUB_ENV
+        working-directory: step1
 
       - name: Send Telegram Notification (step1)
         if: contains(github.event.inputs.action, 'step1')
@@ -102,6 +103,7 @@ jobs:
         run: |
           echo "CREATED_ALB_DNS_NAME=$(terraform output alb_dns_name)" >> $GITHUB_ENV
           echo "TERRAFORM_STATUS=$([[ '${{ steps.apply_step3.outcome }}' == 'success' ]] && echo '✅ Success')" >> $GITHUB_ENV
+        working-directory: step3
 
       - name: Send Telegram Notification (step3)
         if: contains(github.event.inputs.action, 'step3')
