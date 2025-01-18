@@ -115,13 +115,18 @@ jobs:
             *Create ECS infrastructure (step3)*:
             *Created ALB DNS Name*: ${{ env.CREATED_ALB_DNS_NAME }}
             *Terraform Apply Status*: ${{ env.TERRAFORM_STATUS }}
-
+        
+      - name: Init Terraform (destroy)
+        if: contains(github.event.inputs.action, 'destroy')
+        run: terraform init
+        working-directory: step3
+        
       - name: Destroy Terraform (destroy)
         if: contains(github.event.inputs.action, 'destroy')
         id: destroy
         run: terraform destroy -auto-approve
         working-directory: step3
-
+        
       - name: Collect status (destroy)
         if: contains(github.event.inputs.action, 'destroy')
         id: collect_status_destroy
