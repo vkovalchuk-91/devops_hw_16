@@ -166,3 +166,7 @@ resource "aws_ecs_service" "wordpress" {
     container_port   = 80
   }
 }
+
+output "alb_dns_name" {
+  value = aws_lb.wordpress_alb.dns_name
+}
