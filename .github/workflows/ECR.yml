@@ -1,4 +1,4 @@
-name: Build and Push WordPress Docker Image to ECR
+name: Docker Image
 
 on:
   workflow_dispatch:
