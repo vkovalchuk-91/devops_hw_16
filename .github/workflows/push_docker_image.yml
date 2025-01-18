@@ -1,0 +1,86 @@
+name: Build and Push WordPress Docker Image to ECR
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Choose the Terraform action to perform'
+        required: true
+        default: 'step2'
+        type: choice
+        options:
+          - 'step2'
+
+env:
+  AWS_REGION: "eu-central-1"
+  ECR_REPOSITORY: "wordpress-repo"
+  IMAGE_TAG: "custom"
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set initial Terraform status
+        if: contains(github.event.inputs.action, 'step2')
+        run: |
+          echo "DOCKER_BUILD_STATUS=❌ Failed" >> $GITHUB_ENV
+          echo "DOCKER_TAG_STATUS=❌ Failed" >> $GITHUB_ENV
+          echo "DOCKER_PUSH_STATUS=❌ Failed" >> $GITHUB_ENV
+        
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        if: contains(github.event.inputs.action, 'step2')
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build Docker Image
+        if: contains(github.event.inputs.action, 'step2')
+        id: docker_build_step2
+        run: |
+          docker build -t $ECR_REPOSITORY:$IMAGE_TAG ./step2  # Вказуємо шлях до step2
+
+      - name: Tag Docker Image
+        if: contains(github.event.inputs.action, 'step2')
+        id: docker_tag_step2
+        run: |
+          IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:$IMAGE_TAG
+          docker tag $ECR_REPOSITORY:$IMAGE_TAG $IMAGE_URI
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV  # Збереження у змінну оточення
+
+      - name: Push Docker Image to ECR
+        if: contains(github.event.inputs.action, 'step2')
+        id: docker_push_step2
+        run: |
+          docker push ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Collect status (step2)
+        if: contains(github.event.inputs.action, 'step2')
+        id: collect_status_step2
+        run: |
+          echo "DOCKER_BUILD_STATUS=$([[ '${{ steps.docker_build_step2.outcome }}' == 'success' ]] && echo '✅ Success')" >> $GITHUB_ENV
+          echo "DOCKER_TAG_STATUS=$([[ '${{ steps.docker_tag_step2.outcome }}' == 'success' ]] && echo '✅ Success')" >> $GITHUB_ENV
+          echo "DOCKER_PUSH_STATUS=$([[ '${{ steps.docker_push_step2.outcome }}' == 'success' ]] && echo '✅ Success')" >> $GITHUB_ENV
+
+      - name: Send Telegram Notification (step2)
+        if: contains(github.event.inputs.action, 'step2')
+        uses: cbrgm/telegram-github-action@v1
+        with:
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          message: |
+            *Build and Push WordPress Docker Image to ECR Results (step2)*:
+            *Docker build Status*: ${{ env.DOCKER_BUILD_STATUS }}
+            *Docker tag Status*: ${{ env.DOCKER_TAG_STATUS }}
+            *Docker push Status*: ${{ env.DOCKER_PUSH_STATUS }}
+            *Image URI*: ${{ env.IMAGE_URI }}
