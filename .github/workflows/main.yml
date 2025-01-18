@@ -6,7 +6,7 @@ on:
       action:
         description: 'Choose the Terraform action to perform'
         required: true
-        default: 'create'
+        default: 'step1'
         type: choice
         options:
           - 'step1'
@@ -38,17 +38,19 @@ jobs:
 
       - name: Init Terraform (step1)
         if: contains(github.event.inputs.action, 'step1')
-        run: terraform init -chdir=step1
+        run: terraform init
+        working-directory: step1
 
       - name: Plan Terraform (step1)
         if: contains(github.event.inputs.action, 'step1')
-        run: terraform plan -chdir=step1
+        run: terraform plan
+        working-directory: step1
 
       - name: Apply Terraform (step1)
         if: contains(github.event.inputs.action, 'step1')
         id: apply_step1
-        run: |
-          terraform apply -chdir=step1 -auto-approve
+        run: terraform apply -auto-approve
+        working-directory: step1
 
       - name: Collect status (step1)
         if: contains(github.event.inputs.action, 'step1')
@@ -80,17 +82,19 @@ jobs:
 
       - name: Init Terraform (step3)
         if: contains(github.event.inputs.action, 'step3')
-        run: terraform init -chdir=step3
+        run: terraform init
+        working-directory: step3
 
       - name: Plan Terraform (step3)
         if: contains(github.event.inputs.action, 'step3')
-        run: terraform plan -chdir=step3
+        run: terraform plan
+        working-directory: step3
 
       - name: Apply Terraform (step3)
         if: contains(github.event.inputs.action, 'step3')
         id: apply_step3
-        run: |
-          terraform apply -chdir=step3 -auto-approve
+        run: terraform apply -chdir=step3 -auto-approve
+        working-directory: step3
 
       - name: Collect status (step3)
         if: contains(github.event.inputs.action, 'step3')
