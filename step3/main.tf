@@ -17,9 +17,9 @@ provider "aws" {
   region = "eu-central-1"
 }
 
-variable "IMAGE_URI" {
+variable "ecr_image_uri" {
   type        = string
-  description = "ECR IMAGE_URI"
+  description = "ECR IMAGE URI"
 }
 
 # --- ECS Cluster ---
@@ -130,7 +130,7 @@ resource "aws_ecs_task_definition" "wordpress" {
   container_definitions = jsonencode([
     {
       name      = "wordpress"
-      image     = var.IMAGE_URI # use your docker image form ECR
+      image     = var.ecr_image_uri # use your docker image form ECR
       essential = true
       portMappings = [
         {
