@@ -42,21 +42,35 @@ jobs:
       - name: Set RDS value
         run: echo "RDS=your-rds-value" >> $GITHUB_ENV
 
-      - name: Replace DB_HOST in wp-config.php
+      - name: Generate wp-config.php
         run: |
-          # Використовуємо sed для заміни рядка
-          sed -i "s/define( 'DB_HOST'.*/define( 'DB_HOST', '\$RDS' );/g" step2/wp-config.php
+          cat > step2/wp-config.php <<EOL
+          <?php
+          define( 'DB_NAME', 'wordpress' );
+          define( 'DB_USER', 'admin' );
+          define( 'DB_PASSWORD', 'StrongPassword123!' );
+          define( 'DB_HOST', '${{ env.RDS }}' );
+          define( 'DB_CHARSET', 'utf8' );
+          define( 'DB_COLLATE', '' );
+          
+          $table_prefix = 'wp_';
+          
+          define( 'WP_DEBUG', false );
+          
+          if ( ! defined( 'ABSPATH' ) ) {
+          	define( 'ABSPATH', __DIR__ . '/' );
+          }
+          
+          require_once ABSPATH . 'wp-settings.php';
+          EOL
 
-      - name: Commit and push changes
-        env:
-          GH_PAT: ${{ secrets.GH_PAT }}
+      - name: Generate Dockerfile
         run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add step2/wp-config.php
-          git commit -m "Updated DB_HOST in wp-config.php" || echo "No changes to commit"
-          git push https://x-access-token:${{ secrets.GH_PAT }}@github.com/vkovalchuk-91/devops_hw_16.git HEAD:main
-      
+          cat > step2/Dockerfile <<EOL
+          FROM wordpress:latest
+          COPY wp-config.php /var/www/html/wp-config.php
+          EOL
+
       - name: Login to Amazon ECR
         if: contains(github.event.inputs.action, 'step2')
         id: login-ecr
@@ -66,7 +80,7 @@ jobs:
         if: contains(github.event.inputs.action, 'step2')
         id: docker_build_step2
         run: |
-          docker build -t $ECR_REPOSITORY:$IMAGE_TAG ./step2  # Вказуємо шлях до step2
+          docker build -t $ECR_REPOSITORY:$IMAGE_TAG ./step2
 
       - name: Tag Docker Image
         if: contains(github.event.inputs.action, 'step2')
@@ -74,7 +88,7 @@ jobs:
         run: |
           IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:$IMAGE_TAG
           docker tag $ECR_REPOSITORY:$IMAGE_TAG $IMAGE_URI
-          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV  # Збереження у змінну оточення
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
       - name: Push Docker Image to ECR
         if: contains(github.event.inputs.action, 'step2')
