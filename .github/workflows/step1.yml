@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Set initial Terraform status
-        run: echo "TERRAFORM_STATUS=❌ Failed" >> $GITHUB_ENV
+        run: echo "STEP1_TERRAFORM_STATUS=❌ Failed" >> $GITHUB_ENV
 
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -61,7 +61,7 @@ jobs:
           echo "PRIVATE_SUBNET_ID_1=$(terraform output private_subnet_id_1)" >> $GITHUB_ENV
           echo "PRIVATE_SUBNET_ID_2=$(terraform output private_subnet_id_2)" >> $GITHUB_ENV
           echo "RDS_DB_ENDPOINT=$(terraform output rds_endpoint)" >> $GITHUB_ENV
-          echo "TERRAFORM_STATUS=$([[ '${{ steps.apply_step1.outcome }}' == 'success' ]] && echo '✅ Success')" >> $GITHUB_ENV
+          echo "STEP1_TERRAFORM_STATUS=$([[ '${{ steps.apply_step1.outcome }}' == 'success' ]] && echo '✅ Success')" >> $GITHUB_ENV
         working-directory: step1
 
       - name: Send Telegram Notification (step1)
@@ -74,7 +74,7 @@ jobs:
             *Create infrastructure (VPC + Subnets + Route tables + RDS DB Results (step1)*:
             *VPC Id*: ${{ env.CREATED_VPC_ID }}
             *RDS Endpoint Id*: ${{ env.RDS_DB_ENDPOINT }}
-            *Terraform Apply Status*: ${{ env.TERRAFORM_STATUS }}
+            *Terraform Apply Status*: ${{ env.STEP1_TERRAFORM_STATUS }}
 
       - name: Init Terraform (step1 destroy)
         if: contains(github.event.inputs.action, 'destroy')
@@ -91,7 +91,7 @@ jobs:
         if: contains(github.event.inputs.action, 'destroy')
         id: collect_status_step1_destroy
         run: |
-          echo "TERRAFORM_STATUS=$([[ '${{ steps.step1_destroy.outcome }}' == 'success' ]] && echo '✅ Success')" >> $GITHUB_ENV
+          echo "STEP1_TERRAFORM_STATUS=$([[ '${{ steps.step1_destroy.outcome }}' == 'success' ]] && echo '✅ Success')" >> $GITHUB_ENV
 
       - name: Send Telegram Notification (step1 destroy)
         if: contains(github.event.inputs.action, 'destroy')
@@ -101,4 +101,4 @@ jobs:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           message: |
             *Destroy VPC, Subnets, RDS infrastructure Result (step1 destroy)*:
-            *Terraform Destroy Status*: ${{ env.TERRAFORM_STATUS }}
+            *Terraform Destroy Status*: ${{ env.STEP1_TERRAFORM_STATUS }}
