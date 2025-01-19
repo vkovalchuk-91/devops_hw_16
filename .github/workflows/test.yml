@@ -17,11 +17,11 @@ env:
   ECR_REPOSITORY: "wordpress-repo"
   IMAGE_TAG: "custom"
   IMAGE_URI: "571600859313.dkr.ecr.eu-central-1.amazonaws.com/wordpress-repo:custom"
-  CREATED_VPC_ID: "vpc-031b2fd0af85b4710"
-  PUBLIC_SUBNET_ID_1: "subnet-0acd19af3108e3bec"
-  PUBLIC_SUBNET_ID_2: "subnet-02e8f0546cad0a079"
-  PRIVATE_SUBNET_ID_1: "subnet-0f7b7c014c2418055"
-  PRIVATE_SUBNET_ID_2: "subnet-07e0bfd10b1136f45"
+  CREATED_VPC_ID: "vpc-0bf4135c990fbe652"
+  PUBLIC_SUBNET_ID_1: "subnet-00dd69f362da48f69"
+  PUBLIC_SUBNET_ID_2: "subnet-02d55641870a582bb"
+  PRIVATE_SUBNET_ID_1: "subnet-0699b064a47866f40"
+  PRIVATE_SUBNET_ID_2: "subnet-0bea0dd3e3ebc648f"
 
 jobs:
   ECS:
