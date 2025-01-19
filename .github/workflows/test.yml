@@ -56,16 +56,6 @@ jobs:
         
       - name: Plan Terraform (step3)
         if: contains(github.event.inputs.action, 'create')
-        run: terraform plan
+        run: terraform plan -var 'ecr_image_uri="571600859313.dkr.ecr.eu-central-1.amazonaws.com/wordpress-repo:custom"' -var 'vpc_id="vpc-032203c3f2faff8e9"' -var 'public_subnet_id_1="subnet-043ab186a0d3d8362"' -var 'public_subnet_id_2="subnet-0b8179873aa25b744"' -var 'private_subnet_id_1="subnet-0eb99e19d155f09c8"' -var 'private_subnet_id_2="subnet-0d05137f7b4e2434f"'
         working-directory: step3
-        
-      - name: Plan Terraform (step3)
-        if: contains(github.event.inputs.action, 'create')
-        run: terraform apply \
-             -var 'ecr_image_uri="571600859313.dkr.ecr.eu-central-1.amazonaws.com/wordpress-repo:custom"' \
-             -var 'vpc_id="vpc-032203c3f2faff8e9"' \
-             -var 'public_subnet_id_1="subnet-043ab186a0d3d8362"' \
-             -var 'public_subnet_id_2="subnet-0b8179873aa25b744"' \
-             -var 'private_subnet_id_1="subnet-0eb99e19d155f09c8"' \
-             -var 'private_subnet_id_2="subnet-0d05137f7b4e2434f"'
-        working-directory: step3
+
