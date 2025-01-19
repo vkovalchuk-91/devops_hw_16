@@ -17,6 +17,12 @@ provider "aws" {
   region = "eu-central-1"
 }
 
+variable "rds_endpoint" {
+  type        = string
+  default     = "rds_endpoint"
+  description = "rds_endpoint"
+}
+
 variable "ecr_image_uri" {
   type        = string
   default     = "ecr_image_uri"
@@ -168,6 +174,12 @@ resource "aws_ecs_task_definition" "wordpress" {
           containerPort = 80
           hostPort      = 80
           protocol      = "tcp"
+        }
+      ]
+      environment = [
+        {
+          name  = "WORDPRESS_DB_HOST"
+          value = var.rds_endpoint
         }
       ]
     }
