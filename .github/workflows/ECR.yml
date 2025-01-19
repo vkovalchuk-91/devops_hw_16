@@ -38,8 +38,8 @@ jobs:
         if: contains(github.event.inputs.action, 'step2')
         run: |
           echo "DOCKER_BUILD_STATUS=❌ Failed" >> $GITHUB_ENV
-          echo "DOCKER_TAG_STATUS=❌ Failed" >> $GITHUB_ENV
           echo "DOCKER_PUSH_STATUS=❌ Failed" >> $GITHUB_ENV
+          echo "ECR_IMAGE_REMOVE_STATUS=❌ Failed" >> $GITHUB_ENV
         
       - name: Ensure ECR Repository Exists
         if: contains(github.event.inputs.action, 'step2')
@@ -132,5 +132,22 @@ jobs:
 
       - name: Remove Docker Image from ECR
         if: env.ECR_REPOSITORY_EXISTS == 'true' && contains(github.event.inputs.action, 'destroy')
+        id: ecr_image_remove_destroy
         run: |
           aws ecr batch-delete-image --repository-name $ECR_REPOSITORY --image-ids imageTag=$IMAGE_TAG
+
+      - name: Collect status (destroy)
+        if: contains(github.event.inputs.action, 'destroy')
+        id: collect_status_destroy
+        run: |
+          echo "ECR_IMAGE_REMOVE_STATUS=$([[ '${{ steps.ecr_image_remove_destroy.outcome }}' == 'success' ]] && echo '✅ Success' || echo '❌ Failed')" >> $GITHUB_ENV
+
+      - name: Send Telegram Notification (destroy)
+        if: contains(github.event.inputs.action, 'destroy')
+        uses: cbrgm/telegram-github-action@v1
+        with:
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          message: |
+            *ECR Image remove Results (destroy)*:
+            *ECR Image remove Status*: ${{ env.ECR_IMAGE_REMOVE_STATUS }}
