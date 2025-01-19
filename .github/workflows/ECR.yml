@@ -10,6 +10,7 @@ on:
         type: choice
         options:
           - 'step2'
+          - 'destroy'
 
 env:
   AWS_REGION: "eu-central-1"
@@ -17,21 +18,11 @@ env:
   IMAGE_TAG: "custom"
 
 jobs:
-  build-and-push:
+  ECR:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
 
     steps:
-      - name: Set initial Terraform status
-        if: contains(github.event.inputs.action, 'step2')
-        run: |
-          echo "DOCKER_BUILD_STATUS=❌ Failed" >> $GITHUB_ENV
-          echo "DOCKER_TAG_STATUS=❌ Failed" >> $GITHUB_ENV
-          echo "DOCKER_PUSH_STATUS=❌ Failed" >> $GITHUB_ENV
-        
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -39,7 +30,19 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Set initial Terraform status
+        if: contains(github.event.inputs.action, 'step2')
+        run: |
+          echo "DOCKER_BUILD_STATUS=❌ Failed" >> $GITHUB_ENV
+          echo "DOCKER_TAG_STATUS=❌ Failed" >> $GITHUB_ENV
+          echo "DOCKER_PUSH_STATUS=❌ Failed" >> $GITHUB_ENV
+        
       - name: Ensure ECR Repository Exists
+        if: contains(github.event.inputs.action, 'step2')
         run: |
           aws ecr describe-repositories --repository-names $ECR_REPOSITORY || \
           aws ecr create-repository --repository-name $ECR_REPOSITORY
@@ -47,9 +50,14 @@ jobs:
       - name: Set RDS value
         run: echo "RDS=your-rds-value" >> $GITHUB_ENV
 
-      - name: Generate wp-config.php
+      - name: Create Temporary Build Directory
+        if: contains(github.event.inputs.action, 'step2')
+        run: mkdir -p /tmp/docker-build
+
+      - name: Generate wp-config.php in /tmp
+        if: contains(github.event.inputs.action, 'step2')
         run: |
-          cat > step2/wp-config.php <<EOL
+          cat > /tmp/docker-build/wp-config.php <<EOL
           <?php
           define( 'DB_NAME', 'wordpress' );
           define( 'DB_USER', 'admin' );
@@ -69,45 +77,34 @@ jobs:
           require_once ABSPATH . 'wp-settings.php';
           EOL
 
-      - name: Generate Dockerfile
+      - name: Generate Dockerfile in /tmp
+        if: contains(github.event.inputs.action, 'step2')
         run: |
-          cat > step2/Dockerfile <<EOL
+          cat > /tmp/docker-build/Dockerfile <<EOL
           FROM wordpress:latest
           COPY wp-config.php /var/www/html/wp-config.php
           EOL
-
-      - name: Login to Amazon ECR
-        if: contains(github.event.inputs.action, 'step2')
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
 
       - name: Build Docker Image
         if: contains(github.event.inputs.action, 'step2')
         id: docker_build_step2
         run: |
-          docker build -t $ECR_REPOSITORY:$IMAGE_TAG ./step2
-
-      - name: Tag Docker Image
-        if: contains(github.event.inputs.action, 'step2')
-        id: docker_tag_step2
-        run: |
           IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:$IMAGE_TAG
-          docker tag $ECR_REPOSITORY:$IMAGE_TAG $IMAGE_URI
+          docker build -t $IMAGE_URI /tmp/docker-build
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
       - name: Push Docker Image to ECR
         if: contains(github.event.inputs.action, 'step2')
         id: docker_push_step2
         run: |
-          docker push ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $IMAGE_URI
 
       - name: Collect status (step2)
         if: contains(github.event.inputs.action, 'step2')
         id: collect_status_step2
         run: |
-          echo "DOCKER_BUILD_STATUS=$([[ '${{ steps.docker_build_step2.outcome }}' == 'success' ]] && echo '✅ Success')" >> $GITHUB_ENV
-          echo "DOCKER_TAG_STATUS=$([[ '${{ steps.docker_tag_step2.outcome }}' == 'success' ]] && echo '✅ Success')" >> $GITHUB_ENV
-          echo "DOCKER_PUSH_STATUS=$([[ '${{ steps.docker_push_step2.outcome }}' == 'success' ]] && echo '✅ Success')" >> $GITHUB_ENV
+          echo "DOCKER_BUILD_STATUS=$([[ '${{ steps.docker_build_step2.outcome }}' == 'success' ]] && echo '✅ Success' || echo '❌ Failed')" >> $GITHUB_ENV
+          echo "DOCKER_PUSH_STATUS=$([[ '${{ steps.docker_push_step2.outcome }}' == 'success' ]] && echo '✅ Success' || echo '❌ Failed')" >> $GITHUB_ENV
 
       - name: Send Telegram Notification (step2)
         if: contains(github.event.inputs.action, 'step2')
@@ -118,6 +115,22 @@ jobs:
           message: |
             *Build and Push WordPress Docker Image to ECR Results (step2)*:
             *Docker build Status*: ${{ env.DOCKER_BUILD_STATUS }}
-            *Docker tag Status*: ${{ env.DOCKER_TAG_STATUS }}
             *Docker push Status*: ${{ env.DOCKER_PUSH_STATUS }}
             *Image URI*: ${{ env.IMAGE_URI }}
+
+      - name: Check if ECR repository exists
+        if: contains(github.event.inputs.action, 'destroy')
+        id: check_repo
+        run: |
+          if aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" > /dev/null 2>&1; then
+            echo "Repository exists"
+            echo "ECR_REPOSITORY_EXISTS=true" >> $GITHUB_ENV
+          else
+            echo "Repository does not exist"
+            echo "ECR_REPOSITORY_EXISTS=false" >> $GITHUB_ENV
+          fi
+
+      - name: Remove Docker Image from ECR
+        if: env.ECR_REPOSITORY_EXISTS == 'true' && contains(github.event.inputs.action, 'destroy')
+        run: |
+          aws ecr batch-delete-image --repository-name $ECR_REPOSITORY --image-ids imageTag=$IMAGE_TAG
