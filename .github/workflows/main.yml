@@ -214,23 +214,23 @@ jobs:
       - name: Init Terraform (step3 destroy)
         if: contains(github.event.inputs.action, 'destroy')
         run: terraform init \
-             -var 'ecr_image_uri=1' \
-             -var 'vpc_id=2' \
-             -var 'public_subnet_id_1=3' \
-             -var 'public_subnet_id_2=4' \
-             -var 'private_subnet_id_1=5' \
-             -var 'private_subnet_id_2=6'
+             -var 'ecr_image_uri=x' \
+             -var 'vpc_id=x' \
+             -var 'public_subnet_id_1=x' \
+             -var 'public_subnet_id_2=x' \
+             -var 'private_subnet_id_1=x' \
+             -var 'private_subnet_id_2=x'
         working-directory: step3
         
       - name: Destroy Terraform (step3 destroy)
         if: contains(github.event.inputs.action, 'destroy')
         id: step3_destroy \
-             -var 'ecr_image_uri=1' \
-             -var 'vpc_id=2' \
-             -var 'public_subnet_id_1=3' \
-             -var 'public_subnet_id_2=4' \
-             -var 'private_subnet_id_1=5' \
-             -var 'private_subnet_id_2=6'
+             -var 'ecr_image_uri=x' \
+             -var 'vpc_id=x' \
+             -var 'public_subnet_id_1=x' \
+             -var 'public_subnet_id_2=x' \
+             -var 'private_subnet_id_1=x' \
+             -var 'private_subnet_id_2=x'
         run: terraform destroy -auto-approve
         working-directory: step3
         
