@@ -70,7 +70,7 @@ jobs:
             *Created ALB DNS Name*: ${{ env.CREATED_ALB_DNS_NAME }}
             *Terraform Apply Status*: ${{ env.STEP3_TERRAFORM_STATUS }}
         
-      - name: Init Terraform (destroy)
+      - name: Init Terraform (step3 destroy)
         if: contains(github.event.inputs.action, 'destroy')
         run: terraform init
         working-directory: step3
