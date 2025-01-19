@@ -251,8 +251,8 @@ jobs:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           message: |
-            *ECR Image remove Results (step2 destroy)*:
-            *ECR Image remove Status*: ${{ env.ECR_IMAGE_REMOVE_STATUS }}
+            *Remove ECR Docker Image Results (step2 destroy)*:
+            *ECR Docker Image remove Status*: ${{ env.ECR_IMAGE_REMOVE_STATUS }}
                 
       - name: Init Terraform (step1 destroy)
         if: contains(github.event.inputs.action, 'destroy')
