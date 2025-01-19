@@ -95,7 +95,7 @@ resource "aws_iam_role_policy_attachment" "ecs_cloudwatch_full_access" {
 # --- Security Group ---
 resource "aws_security_group" "ecs_sg" {
   name_prefix = "ecs-wordpress-"
-  vpc_id      = aws_vpc.main.id # use your VPC
+  vpc_id      = var.vpc_id # use your VPC
 
   ingress {
     from_port   = 80
@@ -118,7 +118,7 @@ resource "aws_lb" "wordpress_alb" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.ecs_sg.id]
-  subnets            = [aws_subnet.public[0].id, aws_subnet.public[1].id] #use public subnet
+  subnets            = [var.public_subnet_id_1, var.public_subnet_id_2] #use public subnet
 }
 
 # --- Target Group ---
@@ -126,7 +126,7 @@ resource "aws_lb_target_group" "wordpress_tg" {
   name        = "wordpress-tg"
   port        = 80
   protocol    = "HTTP"
-  vpc_id      = aws_vpc.main.id # use your VPC
+  vpc_id      = var.vpc_id # use your VPC
   target_type = "ip"
 }
 
@@ -180,7 +180,7 @@ resource "aws_ecs_service" "wordpress" {
   enable_execute_command = true
 
   network_configuration {
-    subnets         = [aws_subnet.private[0].id, aws_subnet.private[1].id] #use private subnet
+    subnets         = [var.private_subnet_id_1, var.private_subnet_id_2] #use private subnet
     security_groups = [aws_security_group.ecs_sg.id]
   }
 
