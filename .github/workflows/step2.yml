@@ -1,4 +1,4 @@
-name: Push/Remove ECR Docker Image (step2)
+name: Build/Push/Remove ECR Docker Image (step2)
 
 on:
   workflow_dispatch:
@@ -6,10 +6,10 @@ on:
       action:
         description: 'Choose the Terraform action to perform'
         required: true
-        default: 'step2'
+        default: 'create'
         type: choice
         options:
-          - 'step2'
+          - 'create'
           - 'destroy'
 
 env:
@@ -19,7 +19,7 @@ env:
 
 jobs:
   ECR:
-    name: Build and Push Docker Image
+    name: Build and Push or remove Docker Image
     runs-on: ubuntu-latest
 
     steps:
@@ -35,27 +35,27 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v1
 
       - name: Set initial Terraform status
-        if: contains(github.event.inputs.action, 'step2')
         run: |
           echo "DOCKER_BUILD_STATUS=❌ Failed" >> $GITHUB_ENV
           echo "DOCKER_PUSH_STATUS=❌ Failed" >> $GITHUB_ENV
           echo "ECR_IMAGE_REMOVE_STATUS=❌ Failed" >> $GITHUB_ENV
         
-      - name: Ensure ECR Repository Exists
-        if: contains(github.event.inputs.action, 'step2')
+      - name: Ensure ECR Repository Exists (step2)
+        if: contains(github.event.inputs.action, 'create')
         run: |
           aws ecr describe-repositories --repository-names $ECR_REPOSITORY || \
           aws ecr create-repository --repository-name $ECR_REPOSITORY
 
-      - name: Set RDS value (!!!!!!! needs manually enter RDS Endpoint)
+      - name: Set RDS value (!!!!!!! needs manually enter RDS Endpoint) (step2)
+        if: contains(github.event.inputs.action, 'create')
         run: echo "RDS=your-rds-value" >> $GITHUB_ENV
 
-      - name: Create Temporary Build Directory
-        if: contains(github.event.inputs.action, 'step2')
+      - name: Create Temporary Build Directory (step2)
+        if: contains(github.event.inputs.action, 'create')
         run: mkdir -p /tmp/docker-build
 
-      - name: Generate wp-config.php in /tmp
-        if: contains(github.event.inputs.action, 'step2')
+      - name: Generate wp-config.php in /tmp (step2)
+        if: contains(github.event.inputs.action, 'create')
         run: |
           cat > /tmp/docker-build/wp-config.php <<EOL
           <?php
@@ -77,37 +77,37 @@ jobs:
           require_once ABSPATH . 'wp-settings.php';
           EOL
 
-      - name: Generate Dockerfile in /tmp
-        if: contains(github.event.inputs.action, 'step2')
+      - name: Generate Dockerfile in /tmp (step2)
+        if: contains(github.event.inputs.action, 'create')
         run: |
           cat > /tmp/docker-build/Dockerfile <<EOL
           FROM wordpress:latest
           COPY wp-config.php /var/www/html/wp-config.php
           EOL
 
-      - name: Build Docker Image
-        if: contains(github.event.inputs.action, 'step2')
+      - name: Build Docker Image (step2)
+        if: contains(github.event.inputs.action, 'create')
         id: docker_build_step2
         run: |
           IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:$IMAGE_TAG
           docker build -t $IMAGE_URI /tmp/docker-build
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
-      - name: Push Docker Image to ECR
-        if: contains(github.event.inputs.action, 'step2')
+      - name: Push Docker Image to ECR (step2)
+        if: contains(github.event.inputs.action, 'create')
         id: docker_push_step2
         run: |
           docker push $IMAGE_URI
 
       - name: Collect status (step2)
-        if: contains(github.event.inputs.action, 'step2')
+        if: contains(github.event.inputs.action, 'create')
         id: collect_status_step2
         run: |
           echo "DOCKER_BUILD_STATUS=$([[ '${{ steps.docker_build_step2.outcome }}' == 'success' ]] && echo '✅ Success' || echo '❌ Failed')" >> $GITHUB_ENV
           echo "DOCKER_PUSH_STATUS=$([[ '${{ steps.docker_push_step2.outcome }}' == 'success' ]] && echo '✅ Success' || echo '❌ Failed')" >> $GITHUB_ENV
 
       - name: Send Telegram Notification (step2)
-        if: contains(github.event.inputs.action, 'step2')
+        if: contains(github.event.inputs.action, 'create')
         uses: cbrgm/telegram-github-action@v1
         with:
           token: ${{ secrets.TELEGRAM_TOKEN }}
@@ -118,7 +118,7 @@ jobs:
             *Docker push Status*: ${{ env.DOCKER_PUSH_STATUS }}
             *Image URI*: ${{ env.IMAGE_URI }}
 
-      - name: Check if ECR repository exists
+      - name: Check if ECR repository exists (step2 destroy)
         if: contains(github.event.inputs.action, 'destroy')
         id: check_repo
         run: |
@@ -130,19 +130,19 @@ jobs:
             echo "ECR_REPOSITORY_EXISTS=false" >> $GITHUB_ENV
           fi
 
-      - name: Remove Docker Image from ECR
+      - name: Remove Docker Image from ECR (step2 destroy)
         if: env.ECR_REPOSITORY_EXISTS == 'true' && contains(github.event.inputs.action, 'destroy')
         id: ecr_image_remove_destroy
         run: |
           aws ecr batch-delete-image --repository-name $ECR_REPOSITORY --image-ids imageTag=$IMAGE_TAG
 
-      - name: Collect status (destroy)
+      - name: Collect status (step2 destroy)
         if: contains(github.event.inputs.action, 'destroy')
-        id: collect_status_destroy
+        id: collect_status_step2_destroy
         run: |
           echo "ECR_IMAGE_REMOVE_STATUS=$([[ '${{ steps.ecr_image_remove_destroy.outcome }}' == 'success' ]] && echo '✅ Success' || echo '❌ Failed')" >> $GITHUB_ENV
 
-      - name: Send Telegram Notification (destroy)
+      - name: Send Telegram Notification (step2 destroy)
         if: contains(github.event.inputs.action, 'destroy')
         uses: cbrgm/telegram-github-action@v1
         with:
