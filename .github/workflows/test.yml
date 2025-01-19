@@ -1,0 +1,251 @@
+name: test
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Choose the Terraform action to perform'
+        required: true
+        default: 'create'
+        type: choice
+        options:
+          - 'create'
+          - 'destroy'
+
+env:
+  AWS_REGION: "eu-central-1"
+  ECR_REPOSITORY: "wordpress-repo"
+  IMAGE_TAG: "custom"
+
+jobs:
+  ECS:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set initial Terraform status
+        run: |
+          echo "STEP1_TERRAFORM_STATUS=❌ Failed" >> $GITHUB_ENV
+          echo "DOCKER_BUILD_STATUS=❌ Failed" >> $GITHUB_ENV
+          echo "DOCKER_PUSH_STATUS=❌ Failed" >> $GITHUB_ENV
+          echo "ECR_IMAGE_REMOVE_STATUS=❌ Failed" >> $GITHUB_ENV
+          echo "STEP3_TERRAFORM_STATUS=❌ Failed" >> $GITHUB_ENV
+
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_wrapper: false
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Init Terraform (step1)
+        if: contains(github.event.inputs.action, 'create')
+        run: terraform init
+        working-directory: step1
+
+      - name: Plan Terraform (step1)
+        if: contains(github.event.inputs.action, 'create')
+        run: terraform plan
+        working-directory: step1
+
+      - name: Apply Terraform (step1)
+        if: contains(github.event.inputs.action, 'create')
+        id: apply_step1
+        run: terraform apply -auto-approve
+        working-directory: step1
+
+      - name: Collect status (step1)
+        if: contains(github.event.inputs.action, 'create')
+        id: collect_status_apply_step1
+        run: |
+          echo "CREATED_VPC_ID=$(terraform output created_vpc_id)" >> $GITHUB_ENV
+          echo "RDS_DB_ENDPOINT=$(terraform output rds_endpoint)" >> $GITHUB_ENV
+          echo "STEP1_TERRAFORM_STATUS=$([[ '${{ steps.apply_step1.outcome }}' == 'success' ]] && echo '✅ Success')" >> $GITHUB_ENV
+        working-directory: step1
+
+      - name: Send Telegram Notification (step1)
+        if: contains(github.event.inputs.action, 'create')
+        uses: cbrgm/telegram-github-action@v1
+        with:
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          message: |
+            *Create infrastructure (VPC + Subnets + Route tables + RDS DB Results (step1)*:
+            *VPC Id*: ${{ env.CREATED_VPC_ID }}
+            *RDS Endpoint Id*: ${{ env.RDS_DB_ENDPOINT }}
+            *Terraform Apply Status*: ${{ env.STEP1_TERRAFORM_STATUS }}
+
+      - name: Create Temporary Build Directory (step2)
+        if: contains(github.event.inputs.action, 'create')
+        run: mkdir -p /tmp/docker-build
+
+      - name: Generate wp-config.php in /tmp (step2)
+        if: contains(github.event.inputs.action, 'create')
+        run: |
+          cat > /tmp/docker-build/wp-config.php <<EOL
+          <?php
+          define( 'DB_NAME', 'wordpress' );
+          define( 'DB_USER', 'admin' );
+          define( 'DB_PASSWORD', 'StrongPassword123!' );
+          define( 'DB_HOST', '${{ env.RDS_DB_ENDPOINT }}' );
+          define( 'DB_CHARSET', 'utf8' );
+          define( 'DB_COLLATE', '' );
+          
+          $table_prefix = 'wp_';
+          
+          define( 'WP_DEBUG', false );
+          
+          if ( ! defined( 'ABSPATH' ) ) {
+          	define( 'ABSPATH', __DIR__ . '/' );
+          }
+          
+          require_once ABSPATH . 'wp-settings.php';
+          EOL
+
+      - name: Generate Dockerfile in /tmp (step2)
+        if: contains(github.event.inputs.action, 'create')
+        run: |
+          cat > /tmp/docker-build/Dockerfile <<EOL
+          FROM wordpress:latest
+          COPY wp-config.php /var/www/html/wp-config.php
+          EOL
+
+      - name: Build Docker Image (step2)
+        if: contains(github.event.inputs.action, 'create')
+        id: docker_build_step2
+        run: |
+          IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:$IMAGE_TAG
+          docker build -t $IMAGE_URI /tmp/docker-build
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+
+      - name: Push Docker Image to ECR (step2)
+        if: contains(github.event.inputs.action, 'create')
+        id: docker_push_step2
+        run: |
+          docker push $IMAGE_URI
+
+      - name: Collect status (step2)
+        if: contains(github.event.inputs.action, 'create')
+        id: collect_status_step2
+        run: |
+          echo "DOCKER_BUILD_STATUS=$([[ '${{ steps.docker_build_step2.outcome }}' == 'success' ]] && echo '✅ Success' || echo '❌ Failed')" >> $GITHUB_ENV
+          echo "DOCKER_PUSH_STATUS=$([[ '${{ steps.docker_push_step2.outcome }}' == 'success' ]] && echo '✅ Success' || echo '❌ Failed')" >> $GITHUB_ENV
+
+      - name: Send Telegram Notification (step2)
+        if: contains(github.event.inputs.action, 'create')
+        uses: cbrgm/telegram-github-action@v1
+        with:
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          message: |
+            *Build and Push WordPress Docker Image to ECR Results (step2)*:
+            *Docker build Status*: ${{ env.DOCKER_BUILD_STATUS }}
+            *Docker push Status*: ${{ env.DOCKER_PUSH_STATUS }}
+            *Image URI*: ${{ env.IMAGE_URI }}
+
+      - name: Init Terraform (step3)
+        if: contains(github.event.inputs.action, 'create')
+        run: terraform init -var 'ecr_image_uri=${{ env.IMAGE_URI }}'
+        working-directory: step3
+
+      - name: Plan Terraform (step3)
+        if: contains(github.event.inputs.action, 'create')
+        run: terraform plan -var 'ecr_image_uri=${{ env.IMAGE_URI }}'
+        working-directory: step3
+
+      - name: Apply Terraform (step3)
+        if: contains(github.event.inputs.action, 'create')
+        id: apply_step3
+        run: terraform apply -auto-approve -var 'ecr_image_uri=${{ env.IMAGE_URI }}'
+        working-directory: step3
+
+      - name: Collect status (step3)
+        if: contains(github.event.inputs.action, 'create')
+        id: collect_status_apply_step3
+        run: |
+          echo "CREATED_ALB_DNS_NAME=$(terraform output alb_dns_name)" >> $GITHUB_ENV
+          echo "STEP3_TERRAFORM_STATUS=$([[ '${{ steps.apply_step3.outcome }}' == 'success' ]] && echo '✅ Success')" >> $GITHUB_ENV
+        working-directory: step3
+
+      - name: Send Telegram Notification (step3)
+        if: contains(github.event.inputs.action, 'create')
+        uses: cbrgm/telegram-github-action@v1
+        with:
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          message: |
+            *Create ECS infrastructure (step3)*:
+            *Created ALB DNS Name*: ${{ env.CREATED_ALB_DNS_NAME }}
+            *Terraform Apply Status*: ${{ env.STEP3_TERRAFORM_STATUS }}
+
+      - name: Check if ECR repository exists (step2 destroy)
+        if: contains(github.event.inputs.action, 'destroy')
+        id: check_repo
+        run: |
+          if aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" > /dev/null 2>&1; then
+            echo "Repository exists"
+            echo "ECR_REPOSITORY_EXISTS=true" >> $GITHUB_ENV
+          else
+            echo "Repository does not exist"
+            echo "ECR_REPOSITORY_EXISTS=false" >> $GITHUB_ENV
+          fi
+
+      - name: Remove Docker Image from ECR (step2 destroy)
+        if: env.ECR_REPOSITORY_EXISTS == 'true' && contains(github.event.inputs.action, 'destroy')
+        id: ecr_image_remove_destroy
+        run: |
+          aws ecr batch-delete-image --repository-name $ECR_REPOSITORY --image-ids imageTag=$IMAGE_TAG
+
+      - name: Collect status (step2 destroy)
+        if: contains(github.event.inputs.action, 'destroy')
+        id: collect_status_step2_destroy
+        run: |
+          echo "ECR_IMAGE_REMOVE_STATUS=$([[ '${{ steps.ecr_image_remove_destroy.outcome }}' == 'success' ]] && echo '✅ Success' || echo '❌ Failed')" >> $GITHUB_ENV
+
+      - name: Send Telegram Notification (step2 destroy)
+        if: contains(github.event.inputs.action, 'destroy')
+        uses: cbrgm/telegram-github-action@v1
+        with:
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          message: |
+            *ECR Image remove Results (step2 destroy)*:
+            *ECR Image remove Status*: ${{ env.ECR_IMAGE_REMOVE_STATUS }}
+                
+      - name: Init Terraform (step1 destroy)
+        if: contains(github.event.inputs.action, 'destroy')
+        run: terraform init
+        working-directory: step1
+        
+      - name: Destroy Terraform (step1 destroy)
+        if: contains(github.event.inputs.action, 'destroy')
+        id: step1_destroy
+        run: terraform destroy -auto-approve
+        working-directory: step1
+        
+      - name: Collect status (step1 destroy)
+        if: contains(github.event.inputs.action, 'destroy')
+        id: collect_status_step1_destroy
+        run: |
+          echo "STEP1_TERRAFORM_STATUS=$([[ '${{ steps.step1_destroy.outcome }}' == 'success' ]] && echo '✅ Success')" >> $GITHUB_ENV
+
+      - name: Send Telegram Notification (step1 destroy)
+        if: contains(github.event.inputs.action, 'destroy')
+        uses: cbrgm/telegram-github-action@v1
+        with:
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          message: |
+            *Destroy VPC, Subnets, RDS infrastructure Result (step1 destroy)*:
+            *Terraform Destroy Status*: ${{ env.STEP1_TERRAFORM_STATUS }}
