@@ -56,10 +56,6 @@ jobs:
         id: collect_status_apply_step1
         run: |
           echo "CREATED_VPC_ID=$(terraform output created_vpc_id)" >> $GITHUB_ENV
-          echo "PUBLIC_SUBNET_ID_1=$(terraform output public_subnet_id_1)" >> $GITHUB_ENV
-          echo "PUBLIC_SUBNET_ID_2=$(terraform output public_subnet_id_2)" >> $GITHUB_ENV
-          echo "PRIVATE_SUBNET_ID_1=$(terraform output private_subnet_id_1)" >> $GITHUB_ENV
-          echo "PRIVATE_SUBNET_ID_2=$(terraform output private_subnet_id_2)" >> $GITHUB_ENV
           echo "RDS_DB_ENDPOINT=$(terraform output rds_endpoint)" >> $GITHUB_ENV
           echo "STEP1_TERRAFORM_STATUS=$([[ '${{ steps.apply_step1.outcome }}' == 'success' ]] && echo '✅ Success')" >> $GITHUB_ENV
         working-directory: step1
