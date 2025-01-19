@@ -165,13 +165,13 @@ jobs:
 
       - name: Plan Terraform (step3)
         if: contains(github.event.inputs.action, 'create')
-        run: terraform plan -var 'ecr_image_uri=${{ env.IMAGE_URI }}' -var 'vpc_id=${{ env.CREATED_VPC_ID }}' -var 'public_subnet_id_1=${{ env.PUBLIC_SUBNET_ID_1 }}' -var 'public_subnet_id_2=${{ env.PUBLIC_SUBNET_ID_2 }}' -var 'private_subnet_id_1=${{ env.PRIVATE_SUBNET_ID_1 }}' -var 'private_subnet_id_2=${{ env.PRIVATE_SUBNET_ID_2 }}'
+        run: terraform plan -var 'ecr_image_uri=${{ env.RDS_DB_ENDPOINT }}' -var 'ecr_image_uri=${{ env.IMAGE_URI }}' -var 'vpc_id=${{ env.CREATED_VPC_ID }}' -var 'public_subnet_id_1=${{ env.PUBLIC_SUBNET_ID_1 }}' -var 'public_subnet_id_2=${{ env.PUBLIC_SUBNET_ID_2 }}' -var 'private_subnet_id_1=${{ env.PRIVATE_SUBNET_ID_1 }}' -var 'private_subnet_id_2=${{ env.PRIVATE_SUBNET_ID_2 }}'
         working-directory: step3
 
       - name: Apply Terraform (step3)
         if: contains(github.event.inputs.action, 'create')
         id: apply_step3
-        run: terraform apply -auto-approve -var 'ecr_image_uri=${{ env.IMAGE_URI }}' -var 'vpc_id=${{ env.CREATED_VPC_ID }}' -var 'public_subnet_id_1=${{ env.PUBLIC_SUBNET_ID_1 }}' -var 'public_subnet_id_2=${{ env.PUBLIC_SUBNET_ID_2 }}' -var 'private_subnet_id_1=${{ env.PRIVATE_SUBNET_ID_1 }}' -var 'private_subnet_id_2=${{ env.PRIVATE_SUBNET_ID_2 }}'
+        run: terraform apply -auto-approve -var 'ecr_image_uri=${{ env.RDS_DB_ENDPOINT }}' -var 'ecr_image_uri=${{ env.IMAGE_URI }}' -var 'vpc_id=${{ env.CREATED_VPC_ID }}' -var 'public_subnet_id_1=${{ env.PUBLIC_SUBNET_ID_1 }}' -var 'public_subnet_id_2=${{ env.PUBLIC_SUBNET_ID_2 }}' -var 'private_subnet_id_1=${{ env.PRIVATE_SUBNET_ID_1 }}' -var 'private_subnet_id_2=${{ env.PRIVATE_SUBNET_ID_2 }}'
         working-directory: step3
 
       - name: Collect status (step3)
