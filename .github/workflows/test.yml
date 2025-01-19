@@ -1,4 +1,4 @@
-name: Create/destroy ECS (WordPress + RDS MySQL)
+name: test
 
 on:
   workflow_dispatch:
