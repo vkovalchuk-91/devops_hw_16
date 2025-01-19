@@ -45,7 +45,7 @@ jobs:
         run: terraform plan
         working-directory: step1
 
-      - name: Apply Terraform (create)
+      - name: Apply Terraform (step1)
         if: contains(github.event.inputs.action, 'create')
         id: apply_step1
         run: terraform apply -auto-approve
