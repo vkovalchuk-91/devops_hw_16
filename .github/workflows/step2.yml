@@ -18,7 +18,7 @@ env:
   IMAGE_TAG: "custom"
 
 jobs:
-  ECR:
+  step2:
     name: Build and Push or remove Docker Image
     runs-on: ubuntu-latest
 
