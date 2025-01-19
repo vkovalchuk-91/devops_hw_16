@@ -19,31 +19,37 @@ provider "aws" {
 
 variable "ecr_image_uri" {
   type        = string
-  description = "ECR IMAGE URI"
+  default     = "ecr_image_uri"
+  description = "ecr_image_uri"
 }
 
 variable "vpc_id" {
   type        = string
+  default     = "vpc_id"
   description = "vpc_id"
 }
 
 variable "public_subnet_id_1" {
   type        = string
+  default     = "public_subnet_id_1"
   description = "public_subnet_id_1"
 }
 
 variable "public_subnet_id_2" {
   type        = string
+  default     = "public_subnet_id_2"
   description = "public_subnet_id_2"
 }
 
 variable "private_subnet_id_1" {
   type        = string
+  default     = "private_subnet_id_1"
   description = "private_subnet_id_1"
 }
 
 variable "private_subnet_id_2" {
   type        = string
+  default     = "private_subnet_id_2"
   description = "private_subnet_id_2"
 }
 
