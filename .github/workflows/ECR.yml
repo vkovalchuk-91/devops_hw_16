@@ -49,11 +49,11 @@ jobs:
 
       - name: Commit changes
         run: |
-          git config --global user.name "vkovalchuk-91"
-          git config --global user.email "slengpack@gmail.com"
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add step2/wp-config.php
           git commit -m "Updated DB_HOST in wp-config.php"
-          git push
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/vkovalchuk-91/devops_hw_16.git HEAD:main
       
       - name: Login to Amazon ECR
         if: contains(github.event.inputs.action, 'step2')
