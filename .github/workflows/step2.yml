@@ -1,4 +1,4 @@
-name: Docker Image
+name: Push/Remove ECR Docker Image (step2)
 
 on:
   workflow_dispatch:
@@ -47,7 +47,7 @@ jobs:
           aws ecr describe-repositories --repository-names $ECR_REPOSITORY || \
           aws ecr create-repository --repository-name $ECR_REPOSITORY
 
-      - name: Set RDS value
+      - name: Set RDS value (!!!!!!! needs manually enter RDS Endpoint)
         run: echo "RDS=your-rds-value" >> $GITHUB_ENV
 
       - name: Create Temporary Build Directory
@@ -149,5 +149,5 @@ jobs:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           message: |
-            *ECR Image remove Results (destroy)*:
+            *ECR Image remove Results (step2 destroy)*:
             *ECR Image remove Status*: ${{ env.ECR_IMAGE_REMOVE_STATUS }}
