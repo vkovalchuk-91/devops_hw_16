@@ -47,13 +47,15 @@ jobs:
           # Використовуємо sed для заміни рядка
           sed -i "s/define( 'DB_HOST'.*/define( 'DB_HOST', '\$RDS' );/g" step2/wp-config.php
 
-      - name: Commit changes
+      - name: Commit and push changes
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add step2/wp-config.php
-          git commit -m "Updated DB_HOST in wp-config.php"
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/vkovalchuk-91/devops_hw_16.git HEAD:main
+          git commit -m "Updated DB_HOST in wp-config.php" || echo "No changes to commit"
+          git push https://x-access-token:${{ secrets.GH_PAT }}@github.com/vkovalchuk-91/devops_hw_16.git HEAD:main
       
       - name: Login to Amazon ECR
         if: contains(github.event.inputs.action, 'step2')
