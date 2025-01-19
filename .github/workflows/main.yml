@@ -70,6 +70,10 @@ jobs:
         id: collect_status_apply_step1
         run: |
           echo "CREATED_VPC_ID=$(terraform output created_vpc_id)" >> $GITHUB_ENV
+          echo "PUBLIC_SUBNET_ID_1=$(terraform output public_subnet_id_1)" >> $GITHUB_ENV
+          echo "PUBLIC_SUBNET_ID_2=$(terraform output public_subnet_id_2)" >> $GITHUB_ENV
+          echo "PRIVATE_SUBNET_ID_1=$(terraform output private_subnet_id_1)" >> $GITHUB_ENV
+          echo "PRIVATE_SUBNET_ID_2=$(terraform output private_subnet_id_2)" >> $GITHUB_ENV
           echo "RDS_DB_ENDPOINT=$(terraform output rds_endpoint)" >> $GITHUB_ENV
           echo "STEP1_TERRAFORM_STATUS=$([[ '${{ steps.apply_step1.outcome }}' == 'success' ]] && echo '✅ Success')" >> $GITHUB_ENV
         working-directory: step1
@@ -156,18 +160,36 @@ jobs:
 
       - name: Init Terraform (step3)
         if: contains(github.event.inputs.action, 'create')
-        run: terraform init -var 'ecr_image_uri=${{ env.IMAGE_URI }}'
+        run: terraform init \
+             -var 'ecr_image_uri=${{ env.IMAGE_URI }}' \
+             -var 'vpc_id=${{ env.CREATED_VPC_ID }}' \
+             -var 'public_subnet_id_1=${{ env.PUBLIC_SUBNET_ID_1 }}' \
+             -var 'public_subnet_id_2=${{ env.PUBLIC_SUBNET_ID_2 }}' \
+             -var 'private_subnet_id_1=${{ env.PRIVATE_SUBNET_ID_1 }}' \
+             -var 'private_subnet_id_2=${{ env.PRIVATE_SUBNET_ID_2 }}'
         working-directory: step3
 
       - name: Plan Terraform (step3)
         if: contains(github.event.inputs.action, 'create')
-        run: terraform plan -var 'ecr_image_uri=${{ env.IMAGE_URI }}'
+        run: terraform plan \
+             -var 'ecr_image_uri=${{ env.IMAGE_URI }}' \
+             -var 'vpc_id=${{ env.CREATED_VPC_ID }}' \
+             -var 'public_subnet_id_1=${{ env.PUBLIC_SUBNET_ID_1 }}' \
+             -var 'public_subnet_id_2=${{ env.PUBLIC_SUBNET_ID_2 }}' \
+             -var 'private_subnet_id_1=${{ env.PRIVATE_SUBNET_ID_1 }}' \
+             -var 'private_subnet_id_2=${{ env.PRIVATE_SUBNET_ID_2 }}'
         working-directory: step3
 
       - name: Apply Terraform (step3)
         if: contains(github.event.inputs.action, 'create')
         id: apply_step3
-        run: terraform apply -auto-approve -var 'ecr_image_uri=${{ env.IMAGE_URI }}'
+        run: terraform apply -auto-approve \
+             -var 'ecr_image_uri=${{ env.IMAGE_URI }}' \
+             -var 'vpc_id=${{ env.CREATED_VPC_ID }}' \
+             -var 'public_subnet_id_1=${{ env.PUBLIC_SUBNET_ID_1 }}' \
+             -var 'public_subnet_id_2=${{ env.PUBLIC_SUBNET_ID_2 }}' \
+             -var 'private_subnet_id_1=${{ env.PRIVATE_SUBNET_ID_1 }}' \
+             -var 'private_subnet_id_2=${{ env.PRIVATE_SUBNET_ID_2 }}'
         working-directory: step3
 
       - name: Collect status (step3)
@@ -191,12 +213,24 @@ jobs:
 
       - name: Init Terraform (step3 destroy)
         if: contains(github.event.inputs.action, 'destroy')
-        run: terraform init
+        run: terraform init \
+             -var 'ecr_image_uri=1' \
+             -var 'vpc_id=2' \
+             -var 'public_subnet_id_1=3' \
+             -var 'public_subnet_id_2=4' \
+             -var 'private_subnet_id_1=5' \
+             -var 'private_subnet_id_2=6'
         working-directory: step3
         
       - name: Destroy Terraform (step3 destroy)
         if: contains(github.event.inputs.action, 'destroy')
-        id: step3_destroy
+        id: step3_destroy \
+             -var 'ecr_image_uri=1' \
+             -var 'vpc_id=2' \
+             -var 'public_subnet_id_1=3' \
+             -var 'public_subnet_id_2=4' \
+             -var 'private_subnet_id_1=5' \
+             -var 'private_subnet_id_2=6'
         run: terraform destroy -auto-approve
         working-directory: step3
         
