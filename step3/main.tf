@@ -22,6 +22,31 @@ variable "ecr_image_uri" {
   description = "ECR IMAGE URI"
 }
 
+variable "vpc_id" {
+  type        = string
+  description = "vpc_id"
+}
+
+variable "public_subnet_id_1" {
+  type        = string
+  description = "public_subnet_id_1"
+}
+
+variable "public_subnet_id_2" {
+  type        = string
+  description = "public_subnet_id_2"
+}
+
+variable "private_subnet_id_1" {
+  type        = string
+  description = "private_subnet_id_1"
+}
+
+variable "private_subnet_id_2" {
+  type        = string
+  description = "private_subnet_id_2"
+}
+
 # --- ECS Cluster ---
 resource "aws_ecs_cluster" "wordpress_cluster" {
   name = "wordpress-cluster"
@@ -137,12 +162,6 @@ resource "aws_ecs_task_definition" "wordpress" {
           containerPort = 80
           hostPort      = 80
           protocol      = "tcp"
-        }
-      ]
-      environment = [
-        {
-          name  = "WORDPRESS_DB_HOST"
-          value = aws_db_instance.slengpack_rds.endpoint # use your RDS endpoint
         }
       ]
     }
